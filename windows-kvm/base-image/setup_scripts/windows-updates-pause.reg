@@ -22,14 +22,28 @@ Windows Registry Editor Version 5.00
 "PauseQualityUpdatesEndTime"="2051-12-31T00:00:00Z"
 "PauseUpdatesStartTime"="2025-01-01T00:00:00Z"
 "PauseUpdatesExpiryTime"="2051-12-31T00:00:00Z"
-"ActiveHoursStart"=dword:0000000d
-"ActiveHoursEnd"=dword:00000007
+"ActiveHoursStart"=dword:00000008
+"ActiveHoursEnd"=dword:00000017
 "FlightSettingsMaxPauseDays"=dword:00002727
 
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc]
 "Start"=dword:00000004
 "FailureActions"=hex:00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,\
   00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+
+; Additional services to prevent auto-recovery
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TrustedInstaller]
+"Start"=dword:00000004
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UsoSvc]
+"Start"=dword:00000004
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wuauserv]
+"Start"=dword:00000004
+
+; Disable Windows Update Medic Service recovery mechanisms
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\WaaSMedicAgent.exe]
+"Debugger"="taskkill.exe"
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU]
 "NoAutoUpdate"=dword:00000001

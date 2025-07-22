@@ -12,6 +12,12 @@ function RegMkPath()
 }
 
 Write-Output " -> Disabling Windows Update..."
+
+# First, apply registry changes to pause updates and set policies
+$RegFilePath = Join-Path -Path $PSScriptRoot -ChildPath "windows-updates-pause.reg"
+Start-Process -FilePath "regedit.exe" -ArgumentList "/s", "`"$RegFilePath`"" -Wait -Verb RunAs
+
+# Then apply additional registry policies
 $RegPath = RegMkPath -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
 New-ItemProperty -Path $RegPath -Name "WUServer" -Value "http://127.0.0.1" -PropertyType STRING -Force
 New-ItemProperty -Path $RegPath -Name "WUStatusServer" -Value "http://127.0.0.1" -PropertyType STRING -Force
@@ -36,24 +42,30 @@ $services = @(
     "dosvc",           # Delivery Optimization
     "WaaSMedicSvc",    # Windows Update Medic Service
     "UsoSvc",          # Update Orchestrator Service
-    "sedsvc"           # (Sometimes present on older systems)
+    "sedsvc",          # (Sometimes present on older systems)
+    "TrustedInstaller", # Windows Modules Installer
+    "InstallService",  # Microsoft Store Install Service
+    "UpdateSessionOrchestrator" # Update Session Orchestrator
 )
 
 foreach ($service in $services) {
     Write-Host "Disabling service: $service"
-    Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
-    Set-Service -Name $service -StartupType Disabled
+    try {
+        Stop-Service -Name $service -Force -ErrorAction Stop
+        Set-Service -Name $service -StartupType Disabled -ErrorAction Stop
+
+        # Verify the service is actually disabled
+        $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
+        if ($svc -and $svc.StartType -ne "Disabled") {
+            Write-Warning "Failed to disable service: $service (StartType: $($svc.StartType))"
+        } else {
+            Write-Host "Successfully disabled service: $service"
+        }
+    } catch {
+        Write-Warning "Error handling service $service`: $_"
+    }
 }
 
 # Disable all Windows Update-related scheduled tasks
 Get-ScheduledTask -TaskPath '\Microsoft\Windows\WindowsUpdate\'  | Disable-ScheduledTask
 Get-ScheduledTask -TaskPath '\Microsoft\Windows\UpdateOrchestrator\'  | Disable-ScheduledTask
-
-
-# In addition to the changes above we also execute the script from
-# https://github.com/Aetherinox/pause-windows-updates. The changes above are not
-# sufficient but in combination with this script we see no restarts. (It is
-# unclear whether this script alone would do the trick, but let's not touch
-# something that works...).
-$RegFilePath = Join-Path -Path $PSScriptRoot -ChildPath "windows-updates-pause.reg"
-Start-Process -FilePath "regedit.exe" -ArgumentList "/s", "`"$RegFilePath`"" -Wait -Verb RunAs
